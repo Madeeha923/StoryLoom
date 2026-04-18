@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 
 from app.pipeline.automation import EcommerceAutomationPipeline
@@ -9,6 +11,7 @@ from app.services.product_intake_service import (
 )
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def get_listing_pipeline() -> EcommerceAutomationPipeline:
@@ -65,11 +68,13 @@ async def generate_listing(
             audio_content_type=audio_content_type,
         )
     except ValueError as exc:
+        logger.exception("Product intake failed with invalid model response")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(exc),
         ) from exc
     except Exception as exc:
+        logger.exception("OpenAI intake processing failed")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"OpenAI intake processing failed: {exc}",
@@ -87,6 +92,7 @@ async def generate_listing(
     try:
         pipeline_result = await pipeline.execute(pipeline_payload)
     except Exception as exc:
+        logger.exception("Pipeline execution crashed")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"Pipeline execution failed: {exc}",
@@ -111,12 +117,14 @@ async def generate_listing(
             if image_errors
             else "Image generation failed."
         )
+        logger.error("Image generation stage failed: %s", image_message)
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=image_message,
         )
 
     if not generated_images:
+        logger.error("Image generation stage completed without any generated images")
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail="ImageGeneratorAgent completed without generating any images.",

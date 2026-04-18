@@ -23,6 +23,7 @@ function App() {
   const [uploadResult, setUploadResult] = useState(null);
   const [previewIndex, setPreviewIndex] = useState(0);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(true);
+  const [storefrontImageIndex, setStorefrontImageIndex] = useState(0);
 
   const mediaRecorderRef = useRef(null);
   const mediaStreamRef = useRef(null);
@@ -180,6 +181,7 @@ function App() {
     setUploadResult(null);
     setIsLoading(true);
     setResult(null);
+    setStorefrontImageIndex(0);
 
     const payload = new FormData();
     payload.append("image", imageFile);
@@ -271,9 +273,34 @@ function App() {
       setIsRecording(false);
     setPreviewIndex(0);
     setIsPreviewPlaying(true);
+    setStorefrontImageIndex(0);
   }
 
   const generatedImages = result?.images || [];
+  const storefrontPayload = uploadResult?.submitted_payload || {};
+  const storefrontProduct =
+    typeof storefrontPayload.product === "object" && storefrontPayload.product
+      ? storefrontPayload.product
+      : {};
+  const storefrontStory =
+    typeof storefrontPayload.brand_story === "object" && storefrontPayload.brand_story
+      ? storefrontPayload.brand_story
+      : {};
+  const storefrontMedia =
+    typeof storefrontPayload.media === "object" && storefrontPayload.media
+      ? storefrontPayload.media
+      : {};
+  const storefrontImages = Array.isArray(storefrontMedia.image_sequence)
+    ? storefrontMedia.image_sequence
+    : generatedImages;
+  const activeStorefrontImage =
+    storefrontImages[storefrontImageIndex] || storefrontImages[0] || null;
+  const storefrontHighlights = Array.isArray(storefrontProduct.highlights)
+    ? storefrontProduct.highlights
+    : [];
+  const storefrontTags = Array.isArray(storefrontProduct.seo_tags)
+    ? storefrontProduct.seo_tags
+    : [];
   const activePreviewImage =
     generatedImages[previewIndex] || generatedImages[0] || null;
   const totalPreviewDuration = generatedImages.reduce(
@@ -538,6 +565,110 @@ function App() {
                 </div>
               ) : null}
             </section>
+
+            {uploadResult ? (
+              <section className="studio-panel storefront-panel">
+                <SectionHeading
+                  title="Demo Storefront"
+                  subtitle="This is how the listing can appear on an e-commerce product page after upload."
+                />
+
+                <div className="storefront-grid">
+                  <div className="storefront-gallery">
+                    {activeStorefrontImage ? (
+                      <div className="storefront-main-image">
+                        <GeneratedImage
+                          image={activeStorefrontImage}
+                          alt={
+                            activeStorefrontImage?.scene_title ||
+                            storefrontProduct.title ||
+                            "Storefront preview"
+                          }
+                        />
+                      </div>
+                    ) : (
+                      <EmptyState text="Uploaded storefront image will appear here." />
+                    )}
+
+                    {storefrontImages.length ? (
+                      <div className="storefront-thumbnails">
+                        {storefrontImages.map((image, index) => (
+                          <button
+                            key={`${image.scene_number || "image"}-${index}`}
+                            type="button"
+                            className={`thumbnail-button ${
+                              index === storefrontImageIndex ? "is-active" : ""
+                            }`}
+                            onClick={() => setStorefrontImageIndex(index)}
+                          >
+                            <GeneratedImage
+                              image={image}
+                              alt={image.scene_title || `Thumbnail ${index + 1}`}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="storefront-copy">
+                    <div className="storefront-badges">
+                      <span className="storefront-badge">Marketplace Demo</span>
+                      <span className="storefront-badge subtle-badge">
+                        Handmade Heritage Collection
+                      </span>
+                    </div>
+
+                    <h2>
+                      {storefrontProduct.title ||
+                        result?.product_title ||
+                        "Product Listing"}
+                    </h2>
+
+                    <p className="storefront-description">
+                      {storefrontProduct.description ||
+                        result?.product_description ||
+                        "The uploaded product description will appear here after the listing is generated."}
+                    </p>
+
+                    {storefrontHighlights.length ? (
+                      <div className="storefront-block">
+                        <h3>Highlights</h3>
+                        <ul className="storefront-list">
+                          {storefrontHighlights.map((highlight, index) => (
+                            <li key={`${highlight}-${index}`}>{highlight}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+
+                    {storefrontStory.background_context ? (
+                      <div className="storefront-block">
+                        <h3>Craft & Origin</h3>
+                        <p>{storefrontStory.background_context}</p>
+                      </div>
+                    ) : null}
+
+                    {storefrontTags.length ? (
+                      <div className="storefront-tags">
+                        {storefrontTags.map((tag) => (
+                          <span key={tag}>{tag}</span>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    <div className="storefront-actions">
+                      <button className="primary-button" type="button">
+                        Add to Cart
+                      </button>
+                      <button className="secondary-button" type="button">
+                        Buy Now
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            ) : null}
           </div>
         </section>
       </main>

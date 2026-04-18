@@ -10,6 +10,8 @@ from app.api.router import api_router
 from app.core.config import settings
 
 
+logging.basicConfig(level=logging.INFO)
+logging.getLogger().setLevel(logging.INFO)
 logging.getLogger("app").setLevel(logging.INFO)
 
 
