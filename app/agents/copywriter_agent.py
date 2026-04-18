@@ -9,6 +9,7 @@ class CopywriterAgent(BaseAgent):
 
     async def run(self, payload: AgentPayload) -> AgentResponse:
         source_product_name = str(payload.get("product_name", "Unnamed Product")).strip()
+        cultural_topic = str(payload.get("cultural_topic", "")).strip()
         product_category = (
             str(payload.get("product_category", "lifestyle product")).strip()
             or "lifestyle product"
@@ -38,6 +39,7 @@ class CopywriterAgent(BaseAgent):
             product_category=product_category,
             normalized_text=normalized_text,
             input_summary=input_summary,
+            cultural_topic=cultural_topic,
             descriptive_paragraph=descriptive_paragraph,
             visual_summary=visual_summary,
             background_context=background_context,
@@ -83,9 +85,13 @@ class CopywriterAgent(BaseAgent):
     ) -> str:
         base_name = source_product_name if source_product_name != "Unnamed Product" else ""
         descriptors = []
-        if color and color.lower() not in {"unknown", "not visible"}:
+        if color and color.lower() not in {"unknown", "not visible"} and color.lower() not in base_name.lower():
             descriptors.append(color.title())
-        if fabric and "not clearly" not in fabric.lower():
+        if (
+            fabric
+            and "not clearly" not in fabric.lower()
+            and fabric.lower() not in base_name.lower()
+        ):
             descriptors.append(self._title_case_phrase(fabric))
 
         if base_name:
@@ -103,6 +109,7 @@ class CopywriterAgent(BaseAgent):
         product_category: str,
         normalized_text: str,
         input_summary: str,
+        cultural_topic: str,
         descriptive_paragraph: str,
         visual_summary: str,
         background_context: str,
@@ -112,24 +119,41 @@ class CopywriterAgent(BaseAgent):
         user_brief = input_summary or normalized_text
         cultural_snippet = background_context or cultural_context
         visual_snippet = descriptive_paragraph or visual_summary
+        fallback_cultural = cultural_snippet.lower().startswith("no reliable wikipedia background")
+        sentences: list[str] = []
 
-        sentences = [f"{product_title} is a premium {product_category} shaped with a refined, story-led point of view."]
+        if cultural_snippet and not fallback_cultural:
+            heritage_intro = self._build_heritage_intro(
+                cultural_topic=cultural_topic,
+                cultural_snippet=cultural_snippet,
+                product_category=product_category,
+            )
+            sentences.append(heritage_intro)
+            sentences.append(
+                f"This particular piece carries that heritage into a contemporary {product_category} presentation through {self._build_visual_clause(visual_snippet, product_title)}."
+            )
+        else:
+            sentences.append(
+                f"{product_title} brings together traditional appeal and occasion-ready elegance in a refined {product_category} presentation."
+            )
+            if visual_snippet:
+                sentences.append(
+                    f"It stands out through {self._lowercase_first(visual_snippet)}."
+                )
+
         if visual_snippet:
             sentences.append(
-                f"Visually, it stands out through {visual_snippet[0].lower() + visual_snippet[1:] if len(visual_snippet) > 1 else visual_snippet.lower()}."
+                f"The uniqueness of this piece comes through {self._lowercase_first(visual_snippet)}, giving it an elevated catalog presence."
             )
-        if cultural_snippet:
+        if fallback_cultural:
             sentences.append(
-                f"Its narrative draws from meaningful cultural context: {cultural_snippet[:220].strip()}"
-                f"{'' if cultural_snippet[:220].strip().endswith('.') else '.'}"
+                "Its appeal comes from the craftsmanship, textile character, and occasion-led elegance visible in the product itself."
             )
         if user_brief:
             sentences.append(
-                f"Created for discerning customers, it answers the original brief with a polished expression of {user_brief[:160].strip()}."
+                f"For this version, the brief centers on {user_brief[:160].strip()}."
             )
-        sentences.append(
-            f"The overall tone remains {tone}, making it suited for elevated catalog, boutique, and marketplace presentation."
-        )
+        sentences.append(f"The overall tone remains {tone}, making it well suited for elevated catalog, boutique, and marketplace presentation.")
         return " ".join(sentences)
 
     def _build_bullet_highlights(
@@ -185,3 +209,34 @@ class CopywriterAgent(BaseAgent):
 
     def _title_case_phrase(self, value: str) -> str:
         return " ".join(word.capitalize() for word in value.split())
+
+    def _normalize_sentence(self, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            return cleaned
+        return cleaned if cleaned.endswith(".") else f"{cleaned}."
+
+    def _lowercase_first(self, value: str) -> str:
+        cleaned = value.strip()
+        if len(cleaned) <= 1:
+            return cleaned.lower()
+        return cleaned[0].lower() + cleaned[1:]
+
+    def _build_visual_clause(self, visual_snippet: str, product_title: str) -> str:
+        cleaned = visual_snippet.strip()
+        if not cleaned:
+            return product_title
+        return self._lowercase_first(cleaned)
+
+    def _build_heritage_intro(
+        self,
+        *,
+        cultural_topic: str,
+        cultural_snippet: str,
+        product_category: str,
+    ) -> str:
+        cleaned_topic = cultural_topic.strip() or product_category
+        if cleaned_topic:
+            topic_phrase = cleaned_topic[0].upper() + cleaned_topic[1:]
+            return f"{topic_phrase} is known for its cultural heritage and textile craftsmanship. {self._normalize_sentence(cultural_snippet[:220])}"
+        return self._normalize_sentence(cultural_snippet[:280])

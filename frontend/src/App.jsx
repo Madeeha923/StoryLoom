@@ -498,12 +498,12 @@ function App() {
             <section className="studio-panel upload-panel">
               <SectionHeading
                 title="Final Upload"
-                subtitle="Trigger the Registrar handoff to the ONDC-style upload endpoint after reviewing the generated listing."
+                // subtitle="Trigger the Registrar handoff to the ONDC-style upload endpoint after reviewing the generated listing."
               />
 
               <div className="upload-cta">
                 <div className="upload-copy">
-                  <h3>Send Listing to ONDC Flow</h3>
+                  <h3>Send Listing </h3>
                   <p>
                     This button triggers the upload package produced by the
                     agents. The current integration is a mock ONDC endpoint, so
